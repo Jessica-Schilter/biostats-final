@@ -1,0 +1,1228 @@
+---
+title: "final"
+output: html_document
+date: "2022-12-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The datasets in these projects are all in the DATA folder
+
+Instructions remain the same as for the midterm. 
+Extra points (10% of total) for any insights outside of the questions asked.
+Please use a notebook to submit code with comments, but also submit a
+separate document with the answers. 
+
+Two of these datasets you have already analyzed for the midterm. There is a new
+dataset ppg2008.csv which is also used in lesson 11.
+
+===========
+Project 1.
+===========
+This data is about basketball players from the year 2008 and is
+in the file ppg2008.csv. It has various statistics on players in the NBA.
+You might not know what each of the metrics means (I don't),
+but they are just different dimensions of data.  
+
+This is a visualization and data mining exercise. 
+
+What can you say about this dataset, use tools that you learned here.
+and make a report or a visual that highlights something interesting,
+maybe compare players, especially how they have performed since,
+based on the data in here. Many of these players have reached
+their peak recently and you will be able to find statistics about
+their performance in 2019. 
+
+Could you have predicted the successes and failures of some of the players, based
+on analyses of the data ?
+maybe you could be a talent scout for an NBA team ? 
+
+
+Think of it as your job, as a reporter for NY times, to make a single graphic
+that highlights something about this data. Explain the analysis that went
+into the graphic and present the code too. This should be done in a notebook so
+it is easy to evaluate. 
+
+
+
+#lets do a failure analysis maybe?
+
+#this is clustering with k means
+#what can we do to add to this?
+```{r}
+ppg2008<-read.csv("ppg2008.csv", header = TRUE)
+head(ppg2008)
+```
+
+data prep for cluster analysis
+```{r}
+#needs rows as observations(individuals)
+#columns are the variables
+#remove missing values
+#scale the data to make variables comparable(mean 0 and standard deviation of 1)
+
+#remove NA values
+df<-na.omit(ppg2008)
+
+#all columns must be numeric, so move names column to rownames
+rownames(df)<-df$Name
+
+#remove names column(non-numeric column)
+df<-df[,unlist(lapply(df,is.numeric))]
+
+#View(df)
+
+#we don’t want the k-means algorithm to depend to an arbitrary variable unit, we start by scaling the data using the R function scale() 
+df<- scale(df)
+```
+
+
+```{r}
+library(cluster)
+#install.packages("factoextra")
+library(factoextra)
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+#use elbow method to decide on k for k-means
+library(cluster)
+library(factoextra)
+
+#create plot of number of clusters vs total within sum of squares
+fviz_nbclust(df, kmeans, method = "wss")
+```
+from this plot, it looks like the first bend is at 8, so we will use k=8
+
+cluster the data by k-means
+```{r}
+km.res<-kmeans(df,8)
+```
+
+```{r}
+print(km.res)
+```
+
+```{r}
+#add the point classifications to the original data
+
+dd <- cbind(df, cluster = km.res$cluster)
+head(dd)
+```
+
+```{r}
+#Cluster number for each of the observations
+km.res$cluster
+#this gives the cluster that each of these members is assigned
+```
+```{r}
+#visualize the clusters
+fviz_cluster(km.res,df,labelsize = 8)
+```
+
+```{r}
+# Cluster means
+km.res$centers
+```
+
+
+
+```{r}
+library(cluster)
+library(factoextra)
+
+sil <- silhouette(km.res$cluster, dist(df))
+fviz_silhouette(sil)
+```
+from this chart it looks like there should be 7 groups. 
+
+```{r}
+library(GGally)
+library(plotly)
+
+ppg2008$cluster <- as.factor(km.res$cluster)
+
+p <- ggparcoord(data = ppg2008, columns = c(2:21), groupColumn = "cluster", scale = "std") + labs(x = "characteristics", y = "value (in standard-deviation units)", title = "Clustering")
+ggplotly(p)
+```
+
+from this we can see what the main components of each group are. for instance, group 2 has a high value of X3PP compared to the other groups.group 6 has very low FTP compared to other groups.we can relate these characteristics back to the members in each group to see why certain individuals are grouped together.
+
+the graph shows each member of the group.
+
+#compare players, especially how they have performed since,
+based on the data in here. Many of these players have reached
+their peak recently and you will be able to find statistics about
+their performance in 2019. 
+
+predict the successes and failures of some of the players, based
+on analyses of the data
+
+
+#2019 stats
+
+https://www.basketball-reference.com/leagues/NBA_2020_per_game.html#per_game_stats
+
+get as excel workbook
+
+ You should use "Get Table as CSV" and then copy and paste into excel (splitting the rows using the "Data" -&gt; "Text to Columns" command if needed) to retrieve the full table.  The download provided will only contain the first 500 rows.
+
+```{r}
+library("readxl")
+ppg2019<-read_excel("ppg2019.xls")
+ppg2009<-read_excel("ppg2009.xls.xlsx")
+new_2008<-read_excel("new_2008.xls.xlsx")
+```
+
+just leave the stats that match ppg2008 and compare those. you can group them again and compare the groups. then you can see how this compares to rank (Rk)
+
+first be sure the names of the corresponding columns match
+
+change new ppg2019 col names to ppg2008 colnames 
+```{r}
+colnames(ppg2019)[which(names(ppg2019) == "FG%")] <- "FGP"
+colnames(ppg2019)[which(names(ppg2019) == "MP")] <- "MIN"
+colnames(ppg2019)[which(names(ppg2019) == "3PA")] <- "X3PA"
+colnames(ppg2019)[which(names(ppg2019) == "TOV")] <- "TO"
+colnames(ppg2019)[which(names(ppg2019) == "Player")] <- "Name"
+
+colnames(ppg2009)[which(names(ppg2009) == "FG%")] <- "FGP"
+colnames(ppg2009)[which(names(ppg2009) == "MP")] <- "MIN"
+colnames(ppg2009)[which(names(ppg2009) == "3PA")] <- "X3PA"
+colnames(ppg2009)[which(names(ppg2009) == "TOV")] <- "TO"
+colnames(ppg2009)[which(names(ppg2009) == "Player")] <- "Name"
+
+colnames(new_2008)[which(names(new_2008) == "FG%")] <- "FGP"
+colnames(new_2008)[which(names(new_2008) == "MP")] <- "MIN"
+colnames(new_2008)[which(names(new_2008) == "3PA")] <- "X3PA"
+colnames(new_2008)[which(names(new_2008) == "TOV")] <- "TO"
+colnames(new_2008)[which(names(new_2008) == "Player")] <- "Name"
+```
+
+
+get data occurring in each set based on Name:
+
+first: remove duplicate names from ppg2019
+then: remove columns in ppg2019 that do not exist in ppg2018
+finally: remove names in ppg2019 that do not occur in ppg2008
+```{r}
+#remove duplicate names in ppg2019
+library(dplyr)
+ppg2019_2<-ppg2019 %>%
+  filter(duplicated(Name) == FALSE)
+
+#remove columns in ppg2019_2 that do not exist in ppg2018
+ppg2019_3<-ppg2019_2[, intersect(colnames(ppg2008), colnames(ppg2019_2))]
+
+#natural join(inner), all = FALSE. uses merge function. left table has matching keys in right table.
+library(dplyr)
+ppg2019_merge<-merge(x=ppg2019_3, y=ppg2008, by="G")
+head(ppg2019_merge)
+ 
+
+View(ppg2009)
+
+
+
+#remove duplicate names in ppg2019
+library(dplyr)
+ppg2009_2<-ppg2009 %>%
+  filter(duplicated(Name) == FALSE)
+
+#remove duplicate names in ppg2019
+library(dplyr)
+ppg2009_2<-new_2008 %>%
+  filter(duplicated(Name) == FALSE)
+
+#remove columns in ppg2019_2 that do not exist in ppg2018
+ppg2009_3<-ppg2009_2[, intersect(colnames(ppg2008), colnames(ppg2009_2))]
+
+#natural join(inner), all = FALSE. uses merge function. left table has matching keys in right table.
+library(dplyr)
+ppg2009_merge<-merge(x=ppg2009_3, y=ppg2008, by="G")
+head(ppg2009_merge)
+```
+
+```{r}
+#rename everything so the .x isn't in the colnames
+colnames(ppg2019_merge)<-c("G","Name","MIN","PTS","FGA","FGP","FTA","X3PA","ORB","DRB","TRB","AST","STL","BLK","TO","PF"   ,"Name","MIN","PTS","FGM","FGA","FGP","FTM",  "FTA","FTP","X3PM","X3PA","X3PP","ORB","DRB", "TRB","AST","STL","BLK","TO","PF","cluster")
+head(ppg2019_merge)
+
+
+
+#rename everything so the .x isn't in the colnames
+colnames(ppg2009_merge)<-c("G","Name","MIN","PTS","FGA","FGP","FTA","X3PA","ORB","DRB","TRB","AST","STL","BLK","TO","PF"   ,"Name","MIN","PTS","FGM","FGA","FGP","FTM",  "FTA","FTP","X3PM","X3PA","X3PP","ORB","DRB", "TRB","AST","STL","BLK","TO","PF","cluster")
+head(ppg2009_merge)
+```
+
+maybe see if stats are correlated. see what effects field goals (FGP)
+
+or you can look at what team each member was in in 2008 and see if the teams got better in 2019. you can see which teams got better by the FGP (field goal percentage). see if the field goals are correlated with other stats.
+
+correlation analysis
+
+see what is correlated to FGP in both data sets. is the correlation the same in both data sets?
+
+```{r}
+#correlation of the whole data set to see what is most related
+# correlation tests for whole dataset
+# improved correlation matrix
+
+#there is only one column in the df. this is why the corr isnt working
+
+
+#move Name to the row names 
+rownames(ppg2008)<-ppg2008$Name
+#delete the old column
+df2008<-ppg2008[,-1]
+#View(df2008)
+
+library(corrplot)
+
+corrplot(cor(df2008[, unlist(lapply(df2008, is.numeric))]),
+  method = "shade"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+pull rank scores from 2008 from nba website and add it to the ppg2008 data so you can compare players rankings from 2008-2009. see which ones got better and see what had the most affect on the ranks.
+
+```{r}
+View(new_2008)
+#compare new_2008 to ppg2009
+
+cor(new_2008$Rk, new_2008$Age)
+```
+
+
+Data set 1.
+
+This data is about basketball players from the year 2008 and is
+in the file ppg2008.csv. It has various statistics on players in the NBA.
+You might not know what each of the metrics means (I don't),
+but they are just different dimensions of data.  
+
+This is a visualization and data mining exercise. 
+
+What can you say about this dataset, use tools that you learned here.
+and make a report or a visual that highlights something interesting,
+maybe compare players, especially how they have performed since,
+based on the data in here. Many of these players have reached
+their peak recently and you will be able to find statistics about
+their performance in 2019. 
+
+Could you have predicted the successes and failures of some of the players, based
+on analyses of the data ?
+maybe you could be a talent scout for an NBA team ? 
+
+
+Think of it as your job, as a reporter for NY times, to make a single graphic
+that highlights something about this data. Explain the analysis that went
+into the graphic and present the code too. This should be done in a notebook so
+it is easy to evaluate. 
+
+
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("ComplexHeatmap")
+#Load packages
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(scales)
+library(ComplexHeatmap)
+library(circlize)
+library(pheatmap)
+library(heatmaply)
+library(tinytex)
+```
+```{r}
+#Read in original 2008 data set
+nba08<-read.csv("ppg2008.csv",header=TRUE)
+nba08$Name<-with(nba08,reorder(Name,PTS))
+nba08.m<-melt(nba08)
+```
+```{r, fig.width=15,fig.height=10}
+nba08.m<-ddply(nba08.m, .(variable), transform, rescale=rescale(value))
+#Set the ggplot up to create the heatmap for the 2008-2009 NBA data
+p<-ggplot(nba08.m, aes(variable,Name))+geom_tile(aes(fill=rescale),colour="white")+scale_fill_gradient(low="white",high="steelblue")
+p
+```
+
+Now, a heat map will be generated for the 2018 data. 
+
+Data taken from an NBA statistics website; cleaned up to remove some columns that cannot be compared
+https://www.nbastuffer.com/2018-2019-nba-player-stats/
+
+```{r}
+#Read in 2018-19 data set
+nba18<-ppg2009_merge
+
+#Remove duplciate names in this dataframe
+nba18<-nba18[!duplicated(nba18$Name),]
+#Fix column1 so it becomes the row names
+nba18.1<-nba18[,-1]
+#rownames(nba18.1)<-nba18[,1]
+#nba18.1$NAME<-with(nba18.1,reorder(NAME,PTS))
+#nba18.1.m<-melt(nba18.1)
+```
+
+
+
+
+
+```{r}
+#2018 data in same style as the 2008 data
+library(reshape2)
+nba18sorted<-nba18[order(-nba18$PTS),]
+nba18.top50<-head(nba18sorted,50)
+nba18.melted<-melt(nba18.top50)
+```
+```{r, fig.width=15,fig.height=10}
+library(plyr)
+library(ggplot2)
+library(rescale)
+nba18.melted<-ddply(nba18.melted, .(variable),transform,rescale=rescale(value))
+ggplot(nba18.melted,aes(variable,NAME))+geom_tile(aes(fill=rescale),colour="white")+scale_fill_gradient(low="white",high="steel blue")
+```
+
+
+NOW WITH FULL DATASET, Just to take a look.
+
+```{r, fig.width=25,fig.height=90}
+#Now with all data
+nba18.allplayers.melted<-melt(nba18sorted)
+nba18.allplayers.melted<-ddply(nba18.allplayers.melted, .(variable),transform,rescale=rescale(value))
+ggplot(nba18.allplayers.melted,aes(variable,NAME))+geom_tile(aes(fill=rescale),colour="white")+scale_fill_gradient(low="white",high="steel blue")
+```
+
+
+
+
+Now Regenerate 08 heatmap WITHOUT Yao, who is a 3P% outlier.
+
+```{r}
+#Read in original 2008 data set with Yao Ming removed
+nba08noYao<-read.csv("ppg2008.csv",header=TRUE)
+nba08noYao$Name<-with(nba08noYao,reorder(Name,PTS))
+nba08noYao.m<-melt(nba08noYao)
+```
+
+```{r, fig.width=15,fig.height=10}
+nba08noYao.m<-ddply(nba08noYao.m, .(variable), transform, rescale=rescale(value))
+#Set the ggplot up to create the heatmap for the 2008-2009 NBA data without Yao Ming
+pnoYao<-ggplot(nba08noYao.m, aes(variable,Name))+geom_tile(aes(fill=rescale),colour="white")+scale_fill_gradient(low="white",high="steelblue")
+pnoYao
+```
+
+
+
+DISCUSSION:
+
+- note that for top 50 pts output players in the league:
+
+-- At first glance in the 2008 players, 3-point shooting seems to be much less prioritized, with the rest of the players having lower but mostly equal shooting percentages for this statistic. However, in the 2018 data, we see that while 3P% is at mostly consistent levels across players, they are grouped much higher (darker colors) compared to the older data. We can see the main excellent shooters in 2018, unsurprisingly Steph Curry, Klay Thompson, and Danilo Gallinari. HOWEVER, it should be noted that it may be difficult to glean information as effectively from the 2008 data, as Yao Ming apparently made 100% of his 3pt shots (virtually no attempts, as he was an extremely tall player, even for a center, which usually did not shoot at the time).
+- After further investigation, it seems the issue extends beyond just Yao Ming. It seems that many large players in the Center position have extremely high or low 3-point shooting percentages due to their very low attempt numbers. However, removing Yao as an outlier still improves visualization of 3-point shooting percentages for the rest of the 2008 data set.
+
+
+-- This is why the original 08 data was remapped with Yao Ming removed to better visualize the relative 3PP performance of the top players of the time. In the 08 dataset, we can see that amongst top players in the league, 3PP is at a similar high level across the board, with a few standout players. This would indicate that being a good shooter, especially at the 3-point line, was an important part of a primary scorer's game. This is further corroborated by many players also having a high free throw % (FTP). There are a few data points to specifically note, particularly the very dark blue and white spots on the heatmap. These extremely high and low 3PP stats reflect the playstyle of the most successful power forwards and centers of the league, that took few to no 3 point shots, causing that statline to show either extremely high or low percentages. These players include Pau Gasol and Yao Ming with extremely high percentages, and Shaquille O'neal, Tim Duncan, and Dwight Howard with extremely low percentages. These players typically found their scoring success with high-percentage shots inside of the 3-point line using their size and strength, which is supported by many of these players also having extremely high Field Goal Percentages (FGP). Furthermore, these players were successful due to other aspects of the game than scoring, indicated by many players with extremely low 3PP also having unusually high Rebounding and Block statistics. 
+
+-- We can also discuss certain players that display deeply shaded blocks on the heatmap, indicating their unusually high performance in certain areas of the game. One such player is Chris Paul, who is close to the top of the Name axis and has very dark blocks in the Assist and Steal categories. This indicates his role as a crafty and strong playmaker, finding success not just as a scorer by himself, but making plays happen on both sides of the court. Another notable player is Dwight Howard, who notably has virtually no value in the deep shooting categories. However, it is clear he found success in other ways, shown by his incredibly high value in all rebounding categories, as well as in blocking and free throw attempts. This indicates his success as a defensive player and with plays at the rim earning him many free throws from other players fouling him in the act of scoring. 
+-- Other players that stand out include Kevin Martin, who is appears to be a good shooter in general, but was the best in the league at shooting free throws. Another is Deron Williams, with assists at about the same level as Chris Paul, and Stephen Jackson, with the most turnovers in the league. Lastly, Corey Maggette has the most Personal Fouls called against him by far, which upon further investigation, reflects his ability/style to draw fouls while scoring and create points from his solid free throw shooting.
+
+2018
+
+- As for the 2018 data, we see less fewer clear patterns and players that easily stand out from the rest across the board. This may be an indicator that the way the game is played has shifted, with many players developing other aspects of their skill set especially as 3-point shooting has become more emphasized. 
+
+- While there are fewer clear stand-out players, we still do see come players excelling in certain areas. Firstly, we can see that James Harden leads the league in Points by a noticeably larger margin than what was seen in the 2008 data, with the shading in the PTS column dropping off much more sharply. This, coupled with his league leading free throw percentage (FTP) indicates his position as a top scorer in the league with the ability to gain many free throw attempts at the line from fouls drawn on his plays. 
+- Another notable player is Stephen Curry, with excellent free throw, field goal, and 3-point shooting, displaying his season-leading abilities as one of the best shooting guards the league has ever seen. 
+- On the other side, we can also see top inside scorers in Giannis Antetokounmpo, with leading stats in the 2P-shooting %, Field Goal %, and rebounding, displaying his dominance as the leading "big man" in the league.
+
+- Other notable individuals are as follows
+- Highest Percentage 3-point shooters : Buddy Hield, Bojan Bogdanovic, and Danilo Gallinari (who also appears to have the highest offensive rating in the league)
+- Highest Percentage Field Goal scorers: Giannis Antetokounmmpo, Stephen Curry, JaKarr Sampson, and John Collins
+- Best Free throw Shooters: Stephen Curry, Damian Lilliard, Danilo Galinari, and JJ Redick
+- Best Assister: Russell Westbrook
+- Best Stealers: Jimmy Butler (by far), and Paul George 
+- Best Blockers: Anthony Davis(by far), Giannis Antetokounmpo, Joel Embiid, and Karl-Anthony Towns
+- Best Rebounders: Joel Embiid, Giannis Antetokounmpo, and Karl-Anthony Towns
+- Most Turnovers: Trae Young
+
+
+
+- Players in both datasets:
+-- We do see certain players appear in both the 2008 and 2018 datasets, namely Kevin Durant, Lebron James, and LaMarcus Aldrige. Within the top 50 players from each dataset, these are the only apparent players that are still playing in the NBA 10 years later. After further investigation, all three of these player were drafted within a few years of the 2008 season and thus were very young when the data was collected. 
+-- When comparing players that appear in both data sets, it would appear that age can be a factor in predicting player success in that players who excelled at a high level early on in their career also tend to find success much later in their careers as well. However, it is difficult to predict player success off of the provided data since many top players in the league in 2008 are not present in 2018, as most were at the height of their careers in 2008 and retired by the time the 2018 season arrived. Exceptions to this are the players stated above. 
+
+
+
+-- Conclusions:
+- The most successful players in the league can most simply be identified by ranking players by how many points they made. However, this is not a complete picture, and players found this success in different specific aspects of the game. From looking at both 2008 and 2018 data, we can see that these players were able to find opportunities to have impact in their teams typically from either being excellent shooters, defenders(blocks and rebounds), playmakers, and/or insider scorers. Furthermore, we can see that typically, excelling in any particular category does seem to have a link to performing better in certain areas and worse in others, as plays tend to follow a particular playstyle based off of their speed, size, and ability to score, often at the cost of other areas of the game. 
+
+- For example, top shooters such as Stephen Curry, Buddy Hield, and Tobias Harris tend to lack in areas such as blocking or rebounding but find great success shooting the ball, whether at the free throw line or from the 3 line. On the other end, we can also see the "big men" of the league finding success with high defensive statistics such as blocks and rebounds, sometimes paired with high field goal percentages (especially in 2008), indicative of them usually preferring to score with high percentage shots inside of the 3-point line. 
+
+- We can also see which players found great success as playmakers, displayed by their high assist statistics that is usually linked with high turnovers. While at first glance having high turnovers may seem very negative, this is simply indicative of how much of their team's offense flows through these players, as they primarily decide where the ball moves as the play develops. Since these players handle the ball so often, it is sensible that even very successful assisters will have a high turnover percentage by virtue of handling the ball so often.  
+
+
+
+
+
+Dendrograms for the 2008 data without Yao Ming and the top 50 scoring players in 2018 can also be found below.
+```{r}
+heatmaply(nba08noYao)
+heatmaply(nba18.top50)
+```
+
+
+
+
+## Project 2 - Handwriting Data
+
+### **Question 1.**
+
+**Use PCA to reduce dimensions. How many components do you need to keep to reproduce the digits reasonably well? what is your final matrix?**
+
+To capture \~94% of the variance, 75 PCs is enough, and based on plots of the cumulative variance, the elbow at which diminishing returns for including additional PCs starts about here. The drawn images are recognizable at this level, and even at lower thresholds around 20\~30 PCs the images can be visually interpreted. However, the background is not correctly reflected as completely white, and the label assignments are not correct even at 75 PCs or higher, despite cumulative variance totaling \~99%. To reach the highest level of accuracy at which the background and labels are correct, 576 PCs are needed. This amount is still 75% of the original number of components, which isn't an excellent reduction of dimensions. Excluding the labels could potentially improve the dimensionality reduction, though they are a single column with fairly low variance.
+
+```{r}
+#import data, libraries, and set working directory
+current_path = rstudioapi::getActiveDocumentContext()$path 
+setwd(dirname(current_path ))
+#print( getwd() )
+library(readxl)
+library(png)
+train <- read.csv("train.csv")
+```
+
+```{r}
+#function to draw the digit
+draw_digit<-function(data,row){
+  #import the relevant libraries
+  library(ggplot2)
+  library(reshape2)
+  
+  sqdim<-sqrt(ncol(data))
+  #intialize the matrix with the first 28 pixels
+  pixel_grid<-data[row,2:(sqdim+1)]
+  #rename the columns
+  colnames(pixel_grid) <- paste("Col", 1:sqdim)
+  
+ 
+  #put every 28 entries into a new row, starting at second row
+  for(x in 1:(sqdim-1)){
+    #define first pixel in the row
+    start<-x*sqdim+2
+    #define last pixel in the row
+    end<-start+sqdim-1
+    #hold the data from those pixels temporarily
+    temp_row<-data[row,start:end]
+    #make the column names match the full matrix
+    colnames(temp_row) <- paste("Col", 1:sqdim)
+    #add the temp row to the full matrix
+    pixel_grid<-rbind(pixel_grid,temp_row)
+  }
+  #flip the matrix
+  pixel_grid<-pixel_grid[nrow(pixel_grid):1,]
+  #name the rows
+  rownames(pixel_grid) <- paste("Row", 1:sqdim)
+  #melt the data so ggplot can interpret it
+  #also transpose at this point
+  m<-melt(as.matrix(t(pixel_grid)))
+  #give column names to the melted data
+  colnames(m) <- c("x", "y", "value")
+  #define the theme for the heatmap - remove axis etc
+  theme<-theme(legend.position="none",axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
+  #plot the data as a greyscale heatmap
+  ggplot(m, aes(x=x,y=y,fill=value))+scale_fill_gradient(limits = c(min(m$value), max(m$value)), low = 'white', high = 'black')+geom_tile()+theme
+}
+```
+
+```{r}
+#define a row for use as tester
+testrow<-100
+```
+
+```{r}
+#call the function on a row of your choice for reference image
+draw_digit(train, testrow)
+```
+
+```{r}
+#run PCA on the full dataset
+full_pca<-prcomp(train, center=FALSE)
+```
+
+```{r}
+#run PCA on a subset of the data
+train_pca_sub<-prcomp(train[1:1000,], center=FALSE)
+```
+
+```{r}
+#view the plot of PCs versus variance explained
+plot(cumsum(train_pca_sub$sdev^2/sum(train_pca_sub$sdev^2)))
+#plot(train_pca_sub)
+#summary(train_pca_sub)
+```
+
+```{r}
+#find the number of PCs needed for all the labels to return correctly
+for(x in 1:ncol(train)){
+   pc.use<-x
+   train_trunc <- data.frame(round(train_pca_sub$x[,1:pc.use] %*% t(train_pca_sub$rotation[,1:pc.use]),0))
+   if(all.equal(train_trunc$label,train$label[1:1000])==TRUE){
+     print("Number of PCs for accurate labels:",pc.use)
+     break
+   }
+   
+}
+```
+
+```{r}
+pc.use <- 576 # number of PCs needed to correctly assign labels and make background white
+train_trunc <- data.frame(round(train_pca_sub$x[,1:pc.use] %*% t(train_pca_sub$rotation[,1:pc.use]),0))
+draw_digit(train_trunc,testrow)
+```
+
+```{r}
+train_pca_low<-prcomp(train[1:1000,], center=FALSE, rank. = 75)
+test<-data.frame(train_pca_low$x[testrow,] %*% t(train_pca_low$rotation))
+draw_digit(test,1)
+```
+
+### Question 2.
+
+**Draw a tree of the pixels, and see if you can explain the results based on geometry of the pixels (how far apart are they in the 2-d space). Try to Explain the PCA results in light of this.**
+
+By creating the dendrogram, we can see that the pixels with little to no data in them (mostly the edges of the images) cluster together and make up about 25% of the data. This is consistent with the above finding that 75% of the PCs were required to recreate the images.
+
+```{r, fig.align="center", echo = FALSE,fig.width = 1,fig.height=15}
+#install.packages("dendextend")
+library(ggplot2)
+library(ggdendro)
+library(dendextend)
+dend <- train[1:1000,2:785] %>% t %>% dist %>%  hclust %>% as.dendrogram %>%  set("labels_cex", 0.25) %>% set("branches_lwd",0.1) 
+ggd1 <- as.ggdend(dend)
+## Resize width and height plotting area
+#label(ggd1)
+ggplot(ggd1,horiz=TRUE)
+```
+
+### Question 3.
+
+**Can you use some of the tools you have learnt to build a classifier,so if you get a new set of pixels you can predict what is in the picture. This is a the start of a real project, but you don't have all the tools (such as neural networks) which might be more suited for this task. Split your dataset into two (a training set and a test set), build your classifier and figure out how well it does with the test data in predicting the digits. Define the sensitivity and specificity of your classifier. How well does it recognize your own handwriting? (make sure your handwriting is not in the training set)**
+
+```{r}
+#split data into 70% test and 30% train
+split1<- sample(c(rep(0, 0.7 * nrow(train)), rep(1, 0.3 * nrow(train))))
+hw_train<-train[split1 == 0,]
+hw_test<-train[split1 == 1,]
+```
+
+This will be be addressed using three different levels of algorithmic complexity.
+
+3.a. Machine learning algorithms/neural networks are the obvious choice for this task, but first we will try to classify by simply using the average for each digit and correlating against that. Using this method is about 80% accurate. When comparing to the handwriting samples I created, it was limited by the fact that there was only a single comparison, between the average and the sample for each digit. It was able to identify five of the digits correctly.
+
+3.b. The results of the correlative approach seemed insufficient, so using a machine learning model with PCA was the next step. By reducing dimensions and using LDA, we hope to classify each digit using a smaller number of the PC values instead of all 784 pixel columns. However, the performance of this model is poor despite various attempts to optimize, including using up to 500 PCs. The specificity and recall (the term sensitivity only applies to binary classification) were both far below acceptable standards, approximately between 0 and 0.2 depending on the digit being evaluated.
+
+3.c. The PCA model was disappointing as well. Thus, a more proper machine learning algorithm seems to be required. We next evaluate a random forest model. This model uses much less time and lines of code, and has an accuracy of 95% when applied to the test set. However, it is completely unable to identify any of the experimental handwritten digit samples. When applied to the averages for each digit, it can correctly identify 4 out of the 10. The failure to identify the handwriting samples may be due to the scale of the images in both position and intensity - the amount of whitespace outside the writing is not exactly the same, and the intensity of the black color is less in the samples. It may perform better if each image in both sets had any row or column in the 28x28 image with a maximum value below a certain threshold removed, and with the color normalized so that the darkest black part is always equal to the maximum.
+
+As a final observation, the basic correlative approach performed surprisingly well compared to more advanced algorithmic techniques.
+
+#### 3.a. Correlation Based Classification
+
+```{r}
+#create digit averages from the training set
+#create empty dataframe for the averages
+digit_averages<-train[FALSE,]
+#loop to get the averages for each digit 0-9
+for(x in 0:9){
+  #subset the data for the digit 
+  digit_subset<- hw_train[which(hw_train[,1]==x),]
+  #average the columns
+  digit_subset<-colMeans(digit_subset)
+  #add it to the dataset of averages
+  digit_averages<-rbind(digit_averages,digit_subset)
+}
+#rename the rows to the digit they represent, otherwise the labels start at 1 instead of 0
+row.names(digit_averages)<-0:9
+colnames(digit_averages)<-colnames(train)
+#call the function on the average data for the digit of your choice
+```
+
+```{r}
+#sample a row from the test set
+sample<-sample(1:nrow(hw_test),1)
+#store the correlation and digit with the highest correlation
+highest_cor<-0
+digit<-as.integer()
+#compare the correlation of each average digit to the test
+for(x in 1:10){
+  test<-as.numeric(hw_test[sample,2:785])
+  avg<-as.numeric(digit_averages[x,2:785])
+  test_cor<-cor(test, avg)
+  if(test_cor>highest_cor){
+    highest_cor<-test_cor
+    digit<-digit_averages[x,"label"]
+  }
+}
+#print the guess, correct answer, and correlation
+cat("Guess:",digit,"\n")
+cat("Actual:",hw_test[sample,"label"],"\n")
+cat("Correlation:",highest_cor,"\n")
+```
+
+```{r}
+#function to do the above, returns true or false and the test information
+test_classifier<-function(test_data,digit_averages){
+  sample<-sample(1:nrow(test_data),1)
+  highest_cor<-0
+  digit<-as.integer()
+  for(x in 1:10){
+    test<-as.numeric(test_data[sample,2:785])
+    avg<-as.numeric(digit_averages[x,2:785])
+    test_cor<-cor(test, avg)
+    if(test_cor>highest_cor){
+      highest_cor<-test_cor
+      digit<-digit_averages[x,"label"]
+    }
+  }
+  result<-c(digit,test_data[sample,"label"],digit==test_data[sample,"label"],highest_cor)
+  return(result)
+}
+```
+
+```{r}
+#test the function
+test_classifier(hw_test,digit_averages)
+```
+
+```{r}
+#test accuracy of the method
+count<-0
+total<-100
+for(x in 1:total){
+  result<-test_classifier(hw_test,digit_averages)
+  if(result[3]){
+    count<-count+1
+    #cat(count)
+  }
+}
+success_percent<-count/total
+cat(success_percent*100,"% Correct")
+```
+
+```{r}
+## average over a small square (fac x fac) 
+ave_by_fac <- function(i1,fac,ii,jj){
+  ave=0;
+  cnt=0;
+  for(i in c(1:fac)){
+    for(j in c(1:fac)){
+      cnt = cnt +1;
+      x = (ii-1)*fac+i;
+      y = (jj-1)*fac+j;
+      ##	 	 cat("i,j,ii,jj,x,y=",i,j,ii,jj,x,y,"\n");
+      ave = ave+	 i1[x,y];
+    }}
+  ave = ave/cnt;
+  return(ave);
+} 
+## function I wrote to scale down a square image to a 28 x 28 image
+## uses the averaging function above
+scale_down_image <- function(img_in) {
+  ## fac is the factor by which you have to scale the image to become a
+  ## 28 x 28 square
+  fac <- as.integer(dim(img_in)[1]/28); 
+  im_out <- matrix(0,nrow=28,ncol=28);
+  for(i in c(1:28)){
+    for(j in c(1:28)){
+      im_out[i,j] = ave_by_fac(img_in,fac,i,j);
+    }}
+  return(im_out);
+} 
+```
+
+```{r}
+#Get data
+library(png)
+library(vctrs)
+library(ggplot2)
+library(reshape2)
+#function to take png image and convert it to same format as train.csv data
+print_HW_digit<-function(img, label){
+    
+  #apply image scaling function
+  img_scaled<-scale_down_image(img[,,2])
+  
+  #rescale values in the data to match given data, 0=white, 255=black
+  img_scaled<-abs(img_scaled-1)
+  img_scaled<-img_scaled-min(img_scaled)
+  img_scaled<-img_scaled*255
+  img_scaled<-round(img_scaled,0)
+  #transpose data into correct orientation
+  img_scaled<-t(img_scaled)
+  
+  #create the label as a dataframe
+  label<-data.frame(label)
+  
+  #melt the image data so it is in long format
+  img_m<-melt(img_scaled)
+  #select only the values, excluding the x y coordinates
+  img_m<-img_m$value
+  #convert the linearized data into a data frame and transpose it so it is a row not a column
+  img_lin<-data.frame(img_m)
+  img_lin<-t(img_lin)
+  #put the label in the first column
+  img_lab<-cbind(label, img_lin)
+  #label the columns and the row
+  colnames(img_lab)<-colnames(train)
+  rownames(img_lab)<-label
+  #return the transformed data
+  return(img_lab)
+}
+```
+
+```{r}
+#create empty dataframe to store results
+HW_digits<-train[FALSE,]
+#call the function for each digit and store the results
+image<-print_HW_digit(readPNG("zero.png"),"0")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("one.png"),"1")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("two.png"),"2")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("three.png"),"3")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("four.png"),"4")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("five.png"),"5")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("six.png"),"6")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("seven.png"),"7")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("eight.png"),"8")
+HW_digits<-rbind(HW_digits,image)
+image<-print_HW_digit(readPNG("nine.png"),"9")
+HW_digits<-rbind(HW_digits,image)
+```
+
+```{r}
+#test output of function with handwriting data
+test_classifier(HW_digits,digit_averages)
+```
+
+```{r}
+#test accuracy of method on handwriting data
+digit_accuracy<-data.frame(matrix(ncol = 4, nrow = 10))
+digit_names <- c(0:9)
+rownames(digit_accuracy) <- digit_names
+colnames(digit_accuracy) <-c("Correct Correlation", "Highest Correlation","Correct","Total")
+count<-0
+total<-100
+digit_accuracy[,]<-0
+for(x in 1:total){
+  result<-test_classifier(HW_digits,digit_averages)
+  y<-result[2]
+  digit_count<-digit_accuracy[y,4]
+  digit_accuracy[y,4]<-digit_count+1
+  if(result[3]){
+    count<-count+1
+    digit_accuracy[y,3]<-digit_accuracy[y,3]+1
+    digit_accuracy[y,1]<-result[4]
+  }
+  if(result[4]>digit_accuracy[y,2]){
+    digit_accuracy[y,2]<-result[4]
+  }
+}
+success_percent<-count/total
+cat(success_percent*100,"% Correct")
+digit_accuracy
+```
+
+#### 3.b. PCA model
+
+```{r}
+#PCA model
+#for this method we will perform the PCA dimensionality reduction on the testing and training data, excluding the labels
+library(MASS)
+train_pca<-prcomp(hw_train[2:785], center=FALSE)
+test_pca<-prcomp(hw_test[2:785], center=FALSE)
+```
+
+```{r}
+#once reduced to principal components, the labels are added back in
+train_pca_df<-data.frame(as.numeric(hw_train$label),cbind(train_pca$x))
+colnames(train_pca_df)[1]<-"label"
+test_pca_df<-data.frame(as.numeric(hw_test$label),cbind(test_pca$x))
+colnames(test_pca_df)[1]<-"label"
+#the model includes up to PC10
+pca_model<-lda(label~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10, data=train_pca_df)
+```
+
+```{r}
+#use the model to predict the values in the test set
+hw_pca_predict<-predict(pca_model, newdata=test_pca_df)
+```
+
+```{r}
+#compare the counts of each number predicted
+summary(hw_pca_predict$class)
+table(hw_test$label)
+```
+
+```{r}
+#count how many the model got right
+comp<-hw_pca_predict$class==hw_test$label
+table(comp)
+```
+
+```{r}
+# Evaluate the model by performance metrics
+library(mltest)
+model_eval <- ml_test(hw_pca_predict$class, hw_test$label)
+print(model_eval$balanced.accuracy)
+model_eval$precision
+model_eval$recall
+```
+
+```{r}
+#repeat this process for the handwritten digit samples
+HW_digit_pca<-prcomp(HW_digits[,2:785], center = FALSE)
+HW_digit_pca_df<-data.frame(cbind(HW_digit_pca$x[,1:10]),as.numeric(HW_digits$label))
+colnames(HW_digit_pca_df)[11]<-"label"
+hw_digit_pca_predict<-predict(pca_model, newdata=HW_digit_pca_df)
+digit_model_eval<-ml_test(hw_digit_pca_predict$class,HW_digits$label, output.as.table = TRUE)
+```
+
+#### 3.c. Random Forest model
+
+```{r}
+#random forest method
+#set the parameters for the random forest model
+library(randomForest)
+numTrees <- 25
+rf_labels<-as.factor(hw_train$label)
+rf_test<-hw_test[,-1]
+rf_train<-hw_train[,-1]
+#create the model, testing it on the test data
+rf <- randomForest(rf_train, rf_labels, xtest=rf_test, 
+                   ntree=numTrees)
+```
+
+```{r}
+#count how many the model got right by comparing the predictions to the labels
+comp<-data.frame(rf$test$predicted,hw_test$label,rf$test$predicted==hw_test$label)
+colnames(comp)<-c("Predicted","Actual","Accuracy")
+#calculate and report the performance metrics and summary
+rf_comp<-table(comp$Accuracy)
+rf_accuracy<-rf_comp[2]/(rf_comp[1]+rf_comp[2])*100
+print(head(as.matrix(comp),20))
+print(rf_comp)
+cat("\nRandom Forest accuracy:",rf_accuracy[[1]],"%")
+```
+
+```{r}
+#applying the RF classifier to the handwritten data
+rf2<- randomForest(rf_train, rf_labels, xtest=HW_digits[-1], 
+                   ntree=numTrees)
+```
+
+```{r}
+#count how many the model got right by comparing the predictions to the labels
+comp2<-data.frame(rf2$test$predicted,rf2$test$predicted==HW_digits$label, row.names = HW_digits$label)
+colnames(comp2)<-c("Predicted","Accuracy")
+#calculate and report the performance metrics and summary
+rf_comp2<-table(comp2$Accuracy)
+rf_accuracy2<-rf_comp2[2]/(rf_comp2[1]+rf_comp2[2])*100
+print(as.matrix(comp2))
+print(rf_comp2)
+cat("\nRandom Forest accuracy:",rf_accuracy2[[1]],"%")
+```
+
+### Question 4.
+
+**You can try simple things like take average of all data for each number and then take a "dot" product with your test set, and identify the pixels. This might work, maybe for some digits, and not others.**
+
+Here we will see which of the digit averages is best classified by the Random Forest model. This model is only about to correctly identify 4 of the 10 digits.
+
+```{r}
+#applying the RF classifier to the handwritten data
+rf3<- randomForest(rf_train, rf_labels, xtest=digit_averages[-1], 
+                   ntree=numTrees)
+```
+
+```{r}
+#count how many the model got right by comparing the predictions to the labels
+comp3<-data.frame(rf3$test$predicted,rf3$test$predicted==HW_digits$label,row.names = HW_digits$label)
+colnames(comp3)<-c("Predicted","Accuracy")
+#calculate and report the performance metrics and summary
+rf_comp3<-table(comp3$Accuracy)
+rf_accuracy3<-rf_comp3[2]/(rf_comp3[1]+rf_comp3[2])*100
+print(as.matrix(comp3))
+print(rf_comp3)
+cat("\nRandom Forest accuracy:",rf_accuracy3[1],"%")
+```
+
+
+
+#data set 3
+
+**1) Build hierarchical trees based on the columns and for the rows (exclude rows that are "low" expression)**
+
+```{r}
+# Import data from featureCounts
+countdata <- read.table("Mnemiopsis_count_data.csv", header=TRUE, row.names=1,sep=",")
+coldata <- read.table("Mnemiopsis_col_data.csv", header=TRUE, row.names=1,sep=",")
+```
+
+```{r}
+## make a matrix of only highly expressed genes
+data_subset <- as.matrix(countdata[rowSums(countdata)>100000,])
+head(data_subset)
+```
+
+```{r}
+## distance matrix by converting pearson correlation to a distance for rows
+dm <- as.dist((1-cor(t(data_subset),method=c("pearson")))/2)
+my_hclust_gene <- hclust(dm, method = "complete")
+library(dendextend)
+par(mar=c(5,5,5,12))
+nPar <- list(lab.cex = 0.6, pch = c(NA, 19),cex = 0.7, col = "blue")
+ePar = list(col = 2:3, lwd = 2:1)
+plot(as.dendrogram(my_hclust_gene),nodePar=nPar,
+edgePar=ePar,horiz=TRUE)
+```
+
+```{r}
+## distance matrix by converting pearson correlation to a distance for columns
+dmt <- as.dist((1- cor(data_subset,method=c("pearson")))/2)
+my_hclust_gene_t <- hclust(dmt, method = "complete")
+#library(dendextend)
+par(mar=c(5,5,5,12))
+nPar <- list(lab.cex = 0.6, pch = c(NA, 19),cex = 0.7, col = "blue")
+ePar = list(col = 2:3, lwd = 2:1)
+plot(as.dendrogram(my_hclust_gene_t),nodePar=nPar,
+edgePar=ePar,horiz=TRUE)
+```
+
+**2) Draw a heat map of the expression data**
+
+```{r}
+## make a matrix of only highly expressed genes
+data_sample <- as.matrix(countdata[rowSums(countdata)>200000,])
+data_sample
+library(pheatmap)
+## function to scale values in a list
+cal_z_score <- function(x){
+(x - mean(x)) / sd(x)
+}
+##scale each row, to create normalized data
+data_sample_norm <- t(apply(data_sample, 1,cal_z_score))
+pheatmap(data_sample_norm)
+```
+
+**3) Use DESeq2 to analyse this data**
+
+```{r}
+#install.packages('calibrate')
+#install.packages('DESeq2')
+#install.packages('RColorBrewer')
+#install.packages('gplots')
+#install.packages('genefilter')
+library(calibrate)
+library(DESeq2)
+library(RColorBrewer)
+library(gplots)
+library(genefilter)
+```
+
+```{r}
+# Convert to matrix
+countdata <- as.matrix(countdata)
+head(countdata)
+#coldata <- as.matrix(coldata)
+head(coldata)
+# Analysis with DESeq2 ----------------------------------------------------
+# Create a coldata frame and instantiate the DESeqDataSet. See ?DESeqDataSetFromMatrix
+dds <- DESeqDataSetFromMatrix(countData=countdata, colData=coldata, design=~condition)
+```
+
+```{r}
+# Run the DESeq pipeline
+dds <- DESeq(dds)
+```
+
+```{r}
+#dispersion plot
+png("qc-dispersions.png", 1000, 1000, pointsize=20)
+plotDispEsts(dds, main="Dispersion plot")
+dev.off()
+```
+
+```{r}
+#Regularized log transformation for clustering/heatmaps, etc
+rld <- rlogTransformation(dds)
+head(assay(rld))
+hist(assay(rld))
+```
+
+```{r}
+#Colors for plots below
+(mycols <- brewer.pal(8, "Dark2")[1:length(unique(coldata$condition))])
+```
+
+```{r}
+# DESeq2::plotPCA
+pca <- function (rld, intgroup = "condition", ntop = 500, colors=NULL, legendpos="bottomleft", main="PCA Biplot", textcx=1, ...) {
+  require(genefilter)
+  require(calibrate)
+  require(RColorBrewer)
+  rv = rowVars(assay(rld))
+  select = order(rv, decreasing = TRUE)[seq_len(min(ntop, length(rv)))]
+  pca = prcomp(t(assay(rld)[select, ]))
+  fac = factor(apply(as.data.frame(colData(rld)[, intgroup, drop = FALSE]), 1, paste, collapse = " : "))
+  if (is.null(colors)) {
+    if (nlevels(fac) >= 3) {
+      colors = brewer.pal(nlevels(fac), "Paired")
+    }   else {
+      colors = c("black", "red")
+    }
+  }
+  pc1var <- round(summary(pca)$importance[2,1]*100, digits=1)
+  pc2var <- round(summary(pca)$importance[2,2]*100, digits=1)
+  pc1lab <- paste0("PC1 (",as.character(pc1var),"%)")
+  pc2lab <- paste0("PC1 (",as.character(pc2var),"%)")
+  plot(PC2~PC1, data=as.data.frame(pca$x), bg=colors[fac], pch=21, xlab=pc1lab, ylab=pc2lab, main=main, ...)
+  with(as.data.frame(pca$x), textxy(PC1, PC2, labs=rownames(as.data.frame(pca$x)), cex=textcx))
+  legend(legendpos, legend=levels(fac), col=colors, pch=20)
+}
+png("qc-pca.png", 1000, 1000, pointsize=20)
+pca(rld, colors=mycols, intgroup="condition", xlim=c(-75, 35))
+dev.off()
+```
+
+```{r}
+#differential expression results
+res <- results(dds)
+table(res$padj<0.05)
+#Ordered by adjusted p-value
+res <- res[order(res$padj), ]
+#Merging with normalized count data
+resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE)), by="row.names", sort=FALSE)
+names(resdata)[1] <- "Gene"
+head(resdata)
+#Exporting results into a csv file
+write.csv(resdata, file="diffexpr-results.csv")
+```
+
+```{r}
+#Examine plot of p-values
+hist(res$pvalue, breaks=50, col="grey")
+```
+
+```{r}
+#DESeq2::plotMA
+maplot <- function (res, thresh=0.05, labelsig=TRUE, textcx=1, ...) {
+  with(res, plot(baseMean, log2FoldChange, pch=20, cex=.5, log="x", ...))
+  with(subset(res, padj<thresh), points(baseMean, log2FoldChange, col="red", pch=20, cex=1.5))
+  if (labelsig) {
+    require(calibrate)
+    with(subset(res, padj<thresh), textxy(baseMean, log2FoldChange, labs=Gene, cex=textcx, col=2))
+  }
+}
+png("diffexpr-maplot.png", 1500, 1000, pointsize=20)
+maplot(resdata, main="MA Plot")
+dev.off()
+```
+
+```{r}
+## Volcano plot with genes labeled significant
+volcanoplot <- function (res, lfcthresh=2, sigthresh=0.05, main="Volcano Plot", legendpos="bottomright", labelsig=TRUE, textcx=1, ...) {
+  with(res, plot(log2FoldChange, -log10(pvalue), pch=20, main=main, ...))
+  with(subset(res, padj<sigthresh ), points(log2FoldChange, -log10(pvalue), pch=20, col="red", ...))
+  with(subset(res, abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="orange", ...))
+  with(subset(res, padj<sigthresh & abs(log2FoldChange)>lfcthresh), points(log2FoldChange, -log10(pvalue), pch=20, col="green", ...))
+  if (labelsig) {
+    require(calibrate)
+    with(subset(res, padj<sigthresh & abs(log2FoldChange)>lfcthresh), textxy(log2FoldChange, -log10(pvalue), labs=Gene, cex=textcx, ...))
+  }
+  legend(legendpos, xjust=1, yjust=1, legend=c(paste("FDR<",sigthresh,sep=""), paste("|LogFC|>",lfcthresh,sep=""), "both"), pch=20, col=c("red","orange","green"))
+}
+png("diffexpr-volcanoplot.png", 1200, 1000, pointsize=20)
+volcanoplot(resdata, lfcthresh=1, sigthresh=0.05, textcx=.8, xlim=c(-2.3, 2))
+dev.off()
+```
+
+**a) which are the most significantly changing genes in this dataset?**
+
+-   there are couple of column that we can look at from the "diffexpr-results.csv" file to indicate which genes are significantly changing. Looking at the *log2FoldChange* column a positive fold change value indicates an increase of expression, while a negative fold change indicates a decrease in expression. The table is organized by the adjusted p-value column which indicates whether the gene analysed is likely to be differentially expressed in that comparison.This applies to each gene individually, assuming that the gene was tested on its own without consideration that all other genes were also tested. 2129 genes are significant with an adjusted p-value \<0.05. What we noticed is that the FDR threshold on it\'s own doesn\'t appear to be reducing the number of significant genes. With large significant gene lists it can be hard to extract meaningful biological relevance. To help increase stringency, one can also **add a fold change threshold**.
+
+    ```{r}
+    ### Set thresholds
+    padj.cutoff <- 0.05
+    lfc.cutoff <- 0.58
+    ```
+
+-   From the deseq2 analysis we can assume that the most significantly changing genes are:-
+
+-   ![](images/paste-4F506A0B.png)
+
+-   ![](images/paste-92C79C51.png)
+
+-   ![](images/paste-81E1A0C5.png)
+
+-   ![](images/paste-E9BD69D8.png)
+
+-   ![](images/paste-63B5178E.png)
+
+-   ![](images/paste-0E4521B2.png)
+
+**b) which genes are most consistently highly expressed in these datasets they are the "house-keeping" genes?**
+
+![](images/Screen%20Shot%202022-12-21%20at%2011.24.07%20AM.png)
+
+**c) How consistent are these results with the analysis you did in the midterm project?**
+
+The data varies a bit from the midterm project however some data is pretty similar. For example, ML034332a was classified as a down regulated gene in the midterm proejct and based on the Deseq2 analysis (MA Plot) it is an outlier gene. Also when the gene were organized via expresion for column vs row basis in the midterm project it showed 'ML004510a' to be in the top 5 varied gene however this gene is also another example of an outlier.
+
+**d) What else can you say about the data in terms of consistency, and the results that you find from your analyses. The question is open-ended, think of this as your experiment, you need to write a paper based on this data so you have to figure out what kind of "story" you can tell based on this.**
+
+Principal Components Analysis (PCA) is a dimension reduction and visualization technique that is here used to project the multivariate data vector of each sample into a two-dimensional plot, such that the spatial arrangement of the points in the plot reflects the overall data (dis)similarity between the samples. The majority of variation between the samples can be summarized by the first principal component, which is shown on the x-axis. The second principal component summarizes the residual variation that isn\'t explained by PC1. PC2 is shown on the y-axis. The percentage of the global variation explained by each principal component is given in the axis labels. In a two-condition scenario (e.g. ABORAL vs ORAL), you might expect PC1 to separate the two experimental conditions, so for example, having all the controls on the left and all experimental samples on the right (or vice versa - the units and directionality isn\'t important). The secondary axis may separate other aspects of the design - cell line, time point, etc. Very often the experimental design is reflected in the PCA plot, and in this case, it is.
+
+![](qc-pca.png)
+
+The resaon behind fitting a curve to the data is that different genes will have different scales of biological variability, but, over all genes, there will be a distribution of reasonable estimates of dispersion. This curve is displayed as a red line in the figure below, which plots the estimate for the expected dispersion value for genes of a given expression strength. Each black dot is a gene with an associated mean expression level and maximum likelihood estimation (MLE) of the dispersion.. This plot is a great representation of examining data after deseq2 analysis. You expect your data to generally scatter around the curve, with the dispersion decreasing with increasing mean expression levels. If you see a cloud or different shapes, then you might want to explore your data more to see if you have contamination or outlier samples.
+
+![](qc-dispersions.png)
+
+An MA plot shows the average expression on the X-axis and the log fold change on the y-axis. This MA plot shows a high number of data points falling above the one threshold on the y-axis indicating a more significant number of genes being upregulated, while more below −1 would indicating high levels of downregulation in genes.
+
+![](diffexpr-maplot.png)
+
+A volcano plot shows the log fold change on the X-axis, and the −log10−log10 of the p-value on the Y-axis (the more significant the p-value, the larger the −log10−log10 of that value will be). Looking at the x axis we can see that all the genes on the right of the 0 (positive side) are all positively expressed where as the ones plotted on the left of 0 are negatively expressed.
+
+![](diffexpr-volcanoplot.png)
+
+**e) what is the most interesting pathway or gene that is responding in this study?**
+
+-   ML01051a seems to show all the properties for being an outlier however it was in the top 5 of high expressed genes.
+
